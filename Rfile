@@ -1,0 +1,83 @@
+
+# Create list of all files ------------------------------------------------
+fileList <- list.files("Topology_1/", full.names = T)
+length(fileList)
+fileList <-
+  append(fileList, list.files("Topology_2/", full.names = T))
+length(fileList)
+fileList <-
+  append(fileList, list.files("Topology_3/", full.names = T))
+length(fileList)
+fileList <-
+  append(fileList, list.files("Topology_4/", full.names = T))
+length(fileList)
+
+
+# Create a dataframe from All files ---------------------------------------
+rm(dataset)
+for (file in fileList) {
+  # Here we extract 3 features from the filename, so we know later on which row belongs to which Topology P Value and number
+  topPNumber <<-
+    gsub(".*(top[1-4]).*(p.*)_([-]?.*)-interval.*",
+         "\\1 \\2 \\3",
+         file)
+  print(topPNumber)
+  splittedFileName <<- strsplit(topPNumber, " ")
+  topology <<- splittedFileName[[1]][1]
+  pValue <<- splittedFileName[[1]][2]
+  number <<- splittedFileName[[1]][3]
+  
+  if (!exists("dataset")) {
+    dataset <- read.csv(file, sep = "\t", skip = 2)
+    dataset$topology <- topology
+    dataset$pValue <- pValue
+    dataset$number <- number
+  }
+
+  if (exists("dataset")) {
+    temp_dataset <- read.csv(file, sep = "\t", skip = 2)
+    temp_dataset$topology <- topology
+    temp_dataset$pValue <- pValue
+    temp_dataset$number <- number
+    dataset <- rbind(dataset, temp_dataset)
+    rm(temp_dataset)
+  }
+    
+}
+
+# Clean up classes:
+applyFactor <- function() {
+  dataset$topology <- as.factor(dataset$topology)
+  dataset$pValue <- as.factor(dataset$pValue)
+  dataset$number <- as.factor(dataset$number)
+  return(dataset)
+}
+applyNumeric <- function() {
+  dataset$topology <- as.numeric(dataset$topology)
+  dataset$pValue <- as.numeric(dataset$pValue)
+  dataset$number <- as.numeric(dataset$number)
+  return(dataset)
+}
+datasetNumeric <- applyNumeric()
+dataset <- applyFactor()
+str(dataset)
+summary(dataset)
+install.packages("corrplot")
+library(corrplot)
+# See if there are some correlations available:
+corrplot(cor(datasetNumeric))
+
+install.packages("ggplot2")
+install.packages("dplyr")
+library(ggplot2)
+library(dplyr)
+
+ggplot(dataset,aes(x=topology,fill=pValue))+geom_bar()
+
+install.packages("randomForest")
+library(randomForest)
+
+# Sample of creating a machine learning model to learn topologies
+rf <- randomForest(topology ~ ., data = dataset, importance=TRUE)
+# check out which values are most important for our topologies
+varImpPlot(rf)
